@@ -7,10 +7,12 @@ cd "$ROOT"
 
 APP_NAME=${APP_NAME:-CodexSkillManager}
 BUNDLE_ID=${BUNDLE_ID:-com.dimillian.codexskillmanager}
-MACOS_MIN_VERSION=${MACOS_MIN_VERSION:-14.0}
+MACOS_MIN_VERSION=${MACOS_MIN_VERSION:-26.0}
 MENU_BAR_APP=${MENU_BAR_APP:-0}
 SIGNING_MODE=${SIGNING_MODE:-}
 APP_IDENTITY=${APP_IDENTITY:-}
+SPARKLE_FEED_URL=${SPARKLE_FEED_URL:-}
+SPARKLE_PUBLIC_KEY=${SPARKLE_PUBLIC_KEY:-}
 
 if [[ -f "$ROOT/version.env" ]]; then
   source "$ROOT/version.env"
@@ -48,6 +50,15 @@ fi
 BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
+SPARKLE_PLIST_KEYS=""
+if [[ -n "$SPARKLE_PUBLIC_KEY" ]]; then
+  if [[ -z "$SPARKLE_FEED_URL" ]]; then
+    SPARKLE_FEED_URL="https://raw.githubusercontent.com/Dimillian/CodexSkillManager/main/appcast.xml"
+  fi
+  SPARKLE_PLIST_KEYS="    <key>SUFeedURL</key><string>${SPARKLE_FEED_URL}</string>
+    <key>SUPublicEDKey</key><string>${SPARKLE_PUBLIC_KEY}</string>"
+fi
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -65,6 +76,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleIconFile</key><string>Icon</string>
     <key>BuildTimestamp</key><string>${BUILD_TIMESTAMP}</string>
     <key>GitCommit</key><string>${GIT_COMMIT}</string>
+${SPARKLE_PLIST_KEYS}
 </dict>
 </plist>
 PLIST
@@ -184,6 +196,25 @@ else
   CODESIGN_ARGS=(--force --timestamp --options runtime --sign "$APP_IDENTITY")
 fi
 
+sign_sparkle() {
+  local sparkle="$APP/Contents/Frameworks/Sparkle.framework"
+  if [[ ! -d "$sparkle" ]]; then
+    return
+  fi
+  local resign
+  resign() { codesign "${CODESIGN_ARGS[@]}" "$1"; }
+  resign "$sparkle/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"
+  resign "$sparkle/Versions/B/XPCServices/Downloader.xpc"
+  resign "$sparkle/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer"
+  resign "$sparkle/Versions/B/XPCServices/Installer.xpc"
+  resign "$sparkle/Versions/B/Updater.app/Contents/MacOS/Updater"
+  resign "$sparkle/Versions/B/Updater.app"
+  resign "$sparkle/Versions/B/Autoupdate"
+  resign "$sparkle/Versions/B/Sparkle"
+  resign "$sparkle/Versions/B"
+  resign "$sparkle"
+}
+
 # Sign embedded frameworks and their nested binaries before the app bundle.
 sign_frameworks() {
   local fw
@@ -197,6 +228,7 @@ sign_frameworks() {
     codesign "${CODESIGN_ARGS[@]}" "$fw"
   done
 }
+sign_sparkle
 sign_frameworks
 
 codesign "${CODESIGN_ARGS[@]}" \

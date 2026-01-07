@@ -1,7 +1,13 @@
+import Security
 import SwiftUI
+
+#if canImport(Sparkle) && ENABLE_SPARKLE
+import Sparkle
+#endif
 
 @main
 struct CodexSkillManagerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var store = SkillStore()
     @State private var remoteStore = RemoteSkillStore(client: .live())
 
@@ -12,4 +18,51 @@ struct CodexSkillManagerApp: App {
                 .environment(remoteStore)
         }
     }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+#if canImport(Sparkle) && ENABLE_SPARKLE
+    private var updaterController: SPUStandardUpdaterController?
+#endif
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+#if canImport(Sparkle) && ENABLE_SPARKLE
+        guard shouldEnableSparkle() else { return }
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+#endif
+    }
+
+#if canImport(Sparkle) && ENABLE_SPARKLE
+    private func shouldEnableSparkle() -> Bool {
+        let bundleURL = Bundle.main.bundleURL
+        guard bundleURL.pathExtension == "app" else { return false }
+        guard isDeveloperIDSigned(bundleURL: bundleURL) else { return false }
+        let info = Bundle.main.infoDictionary
+        let feedURL = info?["SUFeedURL"] as? String
+        let publicKey = info?["SUPublicEDKey"] as? String
+        return (feedURL?.isEmpty == false) && (publicKey?.isEmpty == false)
+    }
+
+    private func isDeveloperIDSigned(bundleURL: URL) -> Bool {
+        var staticCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(bundleURL as CFURL, SecCSFlags(), &staticCode) == errSecSuccess,
+              let code = staticCode else { return false }
+
+        var infoCF: CFDictionary?
+        guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &infoCF) == errSecSuccess,
+              let info = infoCF as? [String: Any],
+              let certs = info[kSecCodeInfoCertificates as String] as? [SecCertificate],
+              let leaf = certs.first else { return false }
+
+        if let summary = SecCertificateCopySubjectSummary(leaf) as String? {
+            return summary.hasPrefix("Developer ID Application:")
+        }
+        return false
+    }
+#endif
 }

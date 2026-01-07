@@ -8,13 +8,18 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui.git", from: "2.4.1"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
     ],
     targets: [
         .executableTarget(
             name: "CodexSkillManager",
             dependencies: [
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+                .product(name: "Sparkle", package: "Sparkle"),
             ],
-            path: "Sources/CodexSkillManager")
+            path: "Sources/CodexSkillManager",
+            swiftSettings: [
+                .define("ENABLE_SPARKLE"),
+            ])
     ]
 )

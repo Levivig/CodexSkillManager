@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Codex Skill Manager</title>
+    <link>https://raw.githubusercontent.com/Dimillian/CodexSkillManager/main/appcast.xml</link>
+    <description>Codex Skill Manager updates</description>
+  </channel>
+</rss>
