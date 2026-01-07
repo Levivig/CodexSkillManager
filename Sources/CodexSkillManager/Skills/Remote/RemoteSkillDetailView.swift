@@ -81,6 +81,7 @@ struct RemoteSkillDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var ownerDisplayName: String? {
