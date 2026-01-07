@@ -29,7 +29,7 @@ Sparkle env vars (set in `~/.zshrc`):
 - `SPARKLE_FEED_URL`
 
 ## Release flow (commit → changelog → notarize → appcast → GitHub release)
-1) Update version: bump `MARKETING_VERSION` in `version.env`.
+1) Update version: bump `MARKETING_VERSION` and `BUILD_NUMBER` in `version.env`.
 2) Build: `swift build`.
 3) Commit + push:
    - `git add -A`
@@ -41,6 +41,7 @@ Sparkle env vars (set in `~/.zshrc`):
    - `./Scripts/sign-and-notarize.sh`
 6) Generate Sparkle appcast entry:
    - `SPARKLE_PRIVATE_KEY_FILE="..." ./Scripts/make_appcast.sh CodexSkillManager-<version>.zip https://raw.githubusercontent.com/Dimillian/CodexSkillManager/main/appcast.xml`
+   - Note: Sparkle uses the build number (`BUILD_NUMBER`) for `sparkle:version`, so it must increase each release.
    - `git add appcast.xml`
    - `git commit -m "chore: update sparkle appcast"`
    - `git push`
