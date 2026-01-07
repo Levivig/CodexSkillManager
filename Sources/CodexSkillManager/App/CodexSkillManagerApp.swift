@@ -17,6 +17,14 @@ struct CodexSkillManagerApp: App {
                 .environment(store)
                 .environment(remoteStore)
         }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    appDelegate.checkForUpdates()
+                }
+                .keyboardShortcut("u", modifiers: [.command, .option])
+            }
+        }
     }
 }
 
@@ -34,6 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
+#endif
+    }
+
+    func checkForUpdates() {
+#if canImport(Sparkle) && ENABLE_SPARKLE
+        updaterController?.checkForUpdates(nil)
 #endif
     }
 

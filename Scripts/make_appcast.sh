@@ -91,4 +91,27 @@ popd >/dev/null
 
 cp "$WORK_DIR/appcast.xml" "$ROOT/appcast.xml"
 
+# Ensure the appcast item title matches the short version string.
+python3 - <<'PY' "$ROOT/appcast.xml"
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+tree = ET.parse(path)
+root = tree.getroot()
+ns = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}
+channel = root.find("channel")
+if channel is None:
+    sys.exit(0)
+for item in channel.findall("item"):
+    short = item.findtext("sparkle:shortVersionString", default="", namespaces=ns)
+    if not short:
+        continue
+    title = item.find("title")
+    if title is None:
+        title = ET.SubElement(item, "title")
+    title.text = short
+tree.write(path, encoding="utf-8", xml_declaration=True)
+PY
+
 echo "Appcast generated (appcast.xml). Upload alongside $ZIP at $FEED_URL"
