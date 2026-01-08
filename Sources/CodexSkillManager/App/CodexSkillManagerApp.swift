@@ -35,6 +35,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Ensure the app becomes key when launched from `swift run`.
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
 #if canImport(Sparkle) && ENABLE_SPARKLE
         guard shouldEnableSparkle() else { return }
         updaterController = SPUStandardUpdaterController(
