@@ -54,6 +54,18 @@ struct SkillMarkdownView: View {
         }
         .navigationTitle(skill.displayName)
         .navigationSubtitle(skill.folderPath)
+        .toolbar {
+            if clawdhubURL != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        openClawdhubURL()
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .help("Open on Clawdhub")
+                }
+            }
+        }
         .task(id: skill.id) {
             await refreshPublishState()
         }
@@ -90,7 +102,7 @@ struct SkillMarkdownView: View {
     }
 
     private var publishHeader: some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("Clawdhub")
                 .font(.headline)
             Spacer()
@@ -157,16 +169,15 @@ struct SkillMarkdownView: View {
             if let publishedVersion {
                 Text("Latest version \(publishedVersion)")
                     .foregroundStyle(.secondary)
+                Text(needsPublish ? "Changes detected. Publish an update." : "No unpublished changes.")
+                    .foregroundStyle(.secondary)
             } else {
-                Text("First publish will be 1.0.0.")
+                Text("Not yet published on Clawdhub.")
                     .foregroundStyle(.secondary)
             }
 
-            Text(needsPublish ? "Changes detected. Publish an update." : "No unpublished changes.")
-                .foregroundStyle(.secondary)
-
             HStack(spacing: 12) {
-                Button("Publish to Clawdhub") {
+                Button(publishedVersion == nil ? "Publish to Clawdhub" : "Update on Clawdhub") {
                     publishSheetSkill = skill
                 }
                 .buttonStyle(.borderedProminent)
@@ -305,6 +316,17 @@ struct SkillMarkdownView: View {
 
     private func openInstallDocs() {
         guard let url = URL(string: "https://bun.sh") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private var clawdhubURL: URL? {
+        let slug = isOwned ? skill.name : clawdhubOrigin?.slug
+        guard let slug else { return nil }
+        return URL(string: "https://clawdhub.com/skills/\(slug)")
+    }
+
+    private func openClawdhubURL() {
+        guard let url = clawdhubURL else { return }
         NSWorkspace.shared.open(url)
     }
 

@@ -18,6 +18,16 @@ struct RemoteSkillDetailView: View {
             }
             .navigationTitle(skill.displayName)
             .navigationSubtitle("Clawdhub")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        openClawdhubURL(for: skill)
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .help("Open on Clawdhub")
+                }
+            }
         } else {
             ContentUnavailableView(
                 "Select a skill",
@@ -82,6 +92,11 @@ struct RemoteSkillDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func openClawdhubURL(for skill: RemoteSkill) {
+        guard let url = URL(string: "https://clawdhub.com/skills/\(skill.slug)") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private var ownerDisplayName: String? {
