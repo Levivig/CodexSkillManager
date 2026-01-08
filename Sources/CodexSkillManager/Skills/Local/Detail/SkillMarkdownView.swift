@@ -16,8 +16,7 @@ struct SkillMarkdownView: View {
     @State private var updateAvailable = false
     @State private var isUpdating = false
     @State private var isCheckingPublish = false
-    @State private var showingPublishSheet = false
-    @State private var isPublishing = false
+    @State private var publishSheetSkill: Skill?
     @State private var changelog = ""
     @State private var tags = "latest"
     @State private var bump: PublishBump = .patch
@@ -58,24 +57,23 @@ struct SkillMarkdownView: View {
         .task(id: skill.id) {
             await refreshPublishState()
         }
-        .sheet(isPresented: $showingPublishSheet, onDismiss: {
+        .sheet(item: $publishSheetSkill, onDismiss: {
             Task { await refreshPublishState() }
         }) {
             PublishSkillSheet(
-                skill: skill,
-                isPublishing: isPublishing,
+                skill: $0,
                 nextVersion: nextPublishVersion,
+                publishedVersion: publishedVersion,
                 bump: $bump,
                 changelog: $changelog,
-                tags: $tags,
-                onCancel: { showingPublishSheet = false },
-                onPublish: { Task { await publishSkill() } }
+                tags: $tags
             )
+            .environment(store)
         }
-        .alert("Publish failed", isPresented: publishErrorBinding) {
+        .alert("Update failed", isPresented: publishErrorBinding) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(publishErrorMessage ?? "Unable to publish this skill.")
+            Text(publishErrorMessage ?? "Unable to update this skill.")
         }
     }
 
@@ -169,10 +167,9 @@ struct SkillMarkdownView: View {
 
             HStack(spacing: 12) {
                 Button("Publish to Clawdhub") {
-                    showingPublishSheet = true
+                    publishSheetSkill = skill
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isPublishing)
 
                 if !needsPublish {
                     TagView(text: "Up to date", tint: .green)
@@ -281,29 +278,6 @@ struct SkillMarkdownView: View {
         )
         isCheckingCli = false
         isCheckingPublish = false
-    }
-
-    private func publishSkill() async {
-        isPublishing = true
-        publishErrorMessage = nil
-        do {
-            let tagList = tags
-                .split(separator: ",")
-                .map { String($0) }
-            try await store.publishSkill(
-                skill,
-                bump: bump,
-                changelog: changelog,
-                tags: tagList,
-                publishedVersion: publishedVersion
-            )
-            needsPublish = false
-            showingPublishSheet = false
-            changelog = ""
-        } catch {
-            publishErrorMessage = error.localizedDescription
-        }
-        isPublishing = false
     }
 
     private func updateSkill() async {

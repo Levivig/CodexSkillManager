@@ -11,7 +11,7 @@ struct SkillSplitView: View {
     @State private var downloadErrorMessage: String?
     @State private var isDownloadingRemote = false
     @State private var didDownloadRemote = false
-    @State private var showingInstallSheet = false
+    @State private var installSkill: RemoteSkill?
     @State private var installTargets: Set<SkillPlatform> = [.codex]
     @State private var searchTask: Task<Void, Never>?
 
@@ -39,17 +39,17 @@ struct SkillSplitView: View {
                 ImportSkillView()
                     .environment(store)
             }
-            .sheet(isPresented: $showingInstallSheet) {
-                if let skill = remoteStore.selectedSkill {
-                    RemoteInstallSheet(
-                        skill: skill,
-                        installedTargets: store.installedPlatforms(for: skill.slug),
-                        selection: $installTargets,
-                        isInstalling: isDownloadingRemote,
-                        onCancel: { showingInstallSheet = false },
-                        onInstall: { Task { await downloadSelectedRemote() } }
-                    )
-                }
+            .sheet(item: $installSkill) { skill in
+                RemoteInstallSheet(
+                    skill: skill,
+                    installedTargets: store.installedPlatforms(for: skill.slug),
+                    selection: $installTargets,
+                    isInstalling: $isDownloadingRemote,
+                    didInstall: $didDownloadRemote,
+                    errorMessage: $downloadErrorMessage
+                )
+                .environment(store)
+                .environment(remoteStore)
             }
             .alert("Download failed", isPresented: downloadErrorBinding) {
                 Button("OK", role: .cancel) {}
@@ -214,30 +214,7 @@ struct SkillSplitView: View {
     private func presentRemoteInstallSheet() {
         guard let skill = remoteStore.selectedSkill else { return }
         installTargets = defaultInstallTargets(for: skill.slug)
-        showingInstallSheet = true
-    }
-
-    private func downloadSelectedRemote() async {
-        guard let skill = remoteStore.selectedSkill else { return }
-        guard !installTargets.isEmpty else { return }
-        isDownloadingRemote = true
-        didDownloadRemote = false
-        do {
-            try await store.installRemoteSkill(
-                skill,
-                client: remoteStore.client,
-                destinations: installTargets
-            )
-            didDownloadRemote = true
-            showingInstallSheet = false
-            try? await Task.sleep(for: .seconds(1.2))
-        } catch {
-            downloadErrorMessage = error.localizedDescription
-        }
-        isDownloadingRemote = false
-        if didDownloadRemote {
-            didDownloadRemote = false
-        }
+        installSkill = skill
     }
 
     private var downloadErrorBinding: Binding<Bool> {
@@ -266,12 +243,16 @@ struct SkillSplitView: View {
 }
 
 private struct RemoteInstallSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(SkillStore.self) private var store
+    @Environment(RemoteSkillStore.self) private var remoteStore
+
     let skill: RemoteSkill
     let installedTargets: Set<SkillPlatform>
     @Binding var selection: Set<SkillPlatform>
-    let isInstalling: Bool
-    let onCancel: () -> Void
-    let onInstall: () -> Void
+    @Binding var isInstalling: Bool
+    @Binding var didInstall: Bool
+    @Binding var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -291,14 +272,14 @@ private struct RemoteInstallSheet: View {
 
             HStack {
                 Button("Cancel") {
-                    onCancel()
+                    dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
                 Button("Install") {
-                    onInstall()
+                    Task { await installSkill() }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selection.isEmpty || isInstalling)
@@ -307,6 +288,28 @@ private struct RemoteInstallSheet: View {
         }
         .padding(20)
         .frame(minWidth: 520, minHeight: 340)
+    }
+
+    private func installSkill() async {
+        guard !selection.isEmpty else { return }
+        isInstalling = true
+        didInstall = false
+        do {
+            try await store.installRemoteSkill(
+                skill,
+                client: remoteStore.client,
+                destinations: selection
+            )
+            didInstall = true
+            dismiss()
+            try? await Task.sleep(for: .seconds(1.2))
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isInstalling = false
+        if didInstall {
+            didInstall = false
+        }
     }
 }
 
