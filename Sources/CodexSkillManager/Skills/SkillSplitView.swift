@@ -7,6 +7,7 @@ struct SkillSplitView: View {
 
     @State private var searchText = ""
     @State private var showingImport = false
+    @State private var showingAddPath = false
     @State private var source: SkillSource = .local
     @State private var downloadErrorMessage: String?
     @State private var isDownloadingRemote = false
@@ -37,6 +38,10 @@ struct SkillSplitView: View {
             }
             .sheet(isPresented: $showingImport) {
                 ImportSkillView()
+                    .environment(store)
+            }
+            .sheet(isPresented: $showingAddPath) {
+                AddCustomPathView()
                     .environment(store)
             }
             .sheet(item: $installSkill) { skill in
@@ -119,10 +124,15 @@ struct SkillSplitView: View {
         ToolbarSpacer(.fixed)
 
         ToolbarItem(id: "add") {
-            Button {
-                showingImport = true
+            Menu {
+                Button("Import Skill...") {
+                    showingImport = true
+                }
+                Button("Add Custom Path...") {
+                    showingAddPath = true
+                }
             } label: {
-                Label("Add Skill", systemImage: "plus")
+                Label("Add", systemImage: "plus")
             }
             .labelStyle(.iconOnly)
         }
@@ -232,7 +242,7 @@ struct SkillSplitView: View {
         Dictionary(
             grouping: store.skills,
             by: { $0.name }
-        ).mapValues { Set($0.map(\.platform)) }
+        ).mapValues { Set($0.compactMap(\.platform)) }
     }
 
     private func defaultInstallTargets(for slug: String) -> Set<SkillPlatform> {

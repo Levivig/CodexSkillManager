@@ -132,19 +132,42 @@ struct SkillListView: View {
 
     @ViewBuilder
     private func localSectionContent(_ skills: [SkillStore.LocalSkillGroup]) -> some View {
-        let mine = skills.filter { store.isOwnedSkill($0.skill) }
-        let clawdhub = skills.filter { !store.isOwnedSkill($0.skill) }
+        // Filter to only user directory skills (exclude custom path skills)
+        let platformSkills = skills.filter { $0.skill.customPath == nil }
+        let mine = platformSkills.filter { store.isOwnedSkill($0.skill) }
+        let clawdhub = platformSkills.filter { !store.isOwnedSkill($0.skill) }
 
-        if mine.isEmpty && clawdhub.isEmpty {
+        let hasAnySkills = !mine.isEmpty || !clawdhub.isEmpty || !store.customPaths.isEmpty
+
+        if !hasAnySkills {
             Text("No skills yet.")
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 8)
         } else {
+            // Platform skill sections
             Section("Mine") {
                 localRows(for: mine)
             }
             Section("Clawdhub") {
                 localRows(for: clawdhub)
+            }
+
+            // Custom path sections
+            ForEach(store.customPaths) { customPath in
+                let pathSkills = localSkills.filter { $0.customPath?.id == customPath.id }
+                let grouped = store.groupedLocalSkills(from: pathSkills)
+
+                Section {
+                    if grouped.isEmpty {
+                        Text("No skills in this folder.")
+                            .foregroundStyle(.secondary)
+                            .padding(.vertical, 4)
+                    } else {
+                        localRows(for: grouped)
+                    }
+                } header: {
+                    CustomPathSectionHeader(customPath: customPath, skillCount: grouped.count)
+                }
             }
         }
     }

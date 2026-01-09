@@ -50,6 +50,23 @@ import Observation
     private let fileWorker = SkillFileWorker()
     private let importWorker = SkillImportWorker()
     private let cliWorker = ClawdhubCLIWorker()
+    private let customPathStore: CustomPathStore
+
+    init(customPathStore: CustomPathStore = CustomPathStore()) {
+        self.customPathStore = customPathStore
+    }
+
+    var customPaths: [CustomSkillPath] {
+        customPathStore.customPaths
+    }
+
+    func addCustomPath(_ url: URL) throws {
+        try customPathStore.addPath(url)
+    }
+
+    func removeCustomPath(_ path: CustomSkillPath) {
+        customPathStore.removePath(path)
+    }
 
     var selectedSkill: Skill? {
         skills.first { $0.id == selectedSkillID }
@@ -69,6 +86,8 @@ import Observation
                 (platform, platform.rootURL, platform.storageKey)
             }
             var skills: [Skill] = []
+
+            // Scan platform paths
             for (platform, rootURL, storageKey) in platforms {
                 let scanned = try await fileWorker.scanSkills(at: rootURL, storageKey: storageKey)
                 skills.append(contentsOf: scanned.map { scannedSkill in
@@ -78,12 +97,39 @@ import Observation
                         displayName: scannedSkill.displayName,
                         description: scannedSkill.description,
                         platform: platform,
+                        customPath: nil,
                         folderURL: scannedSkill.folderURL,
                         skillMarkdownURL: scannedSkill.skillMarkdownURL,
                         references: scannedSkill.references,
                         stats: scannedSkill.stats
                     )
                 })
+            }
+
+            // Scan custom paths - auto-discover platform subpaths
+            let fileManager = FileManager.default
+            for customPath in customPathStore.customPaths {
+                for platform in SkillPlatform.allCases {
+                    let platformURL = platform.skillsURL(in: customPath.url)
+                    guard fileManager.fileExists(atPath: platformURL.path) else { continue }
+
+                    let storageKey = "\(customPath.storageKey)-\(platform.storageKey)"
+                    let scanned = try await fileWorker.scanSkills(at: platformURL, storageKey: storageKey)
+                    skills.append(contentsOf: scanned.map { scannedSkill in
+                        Skill(
+                            id: scannedSkill.id,
+                            name: scannedSkill.name,
+                            displayName: scannedSkill.displayName,
+                            description: scannedSkill.description,
+                            platform: platform,
+                            customPath: customPath,
+                            folderURL: scannedSkill.folderURL,
+                            skillMarkdownURL: scannedSkill.skillMarkdownURL,
+                            references: scannedSkill.references,
+                            stats: scannedSkill.stats
+                        )
+                    })
+                }
             }
 
             self.skills = skills.sorted {
@@ -166,6 +212,10 @@ import Observation
     }
 
     func isOwnedSkill(_ skill: Skill) -> Bool {
+        // Skills from custom paths are always considered "owned"
+        if skill.customPath != nil {
+            return true
+        }
         let originURL = skill.folderURL
             .appendingPathComponent(".clawdhub")
             .appendingPathComponent("origin.json")
@@ -185,7 +235,7 @@ import Observation
     }
 
     func installedPlatforms(for slug: String) -> Set<SkillPlatform> {
-        Set(skills.filter { $0.name == slug }.map(\.platform))
+        Set(skills.filter { $0.name == slug }.compactMap(\.platform))
     }
 
     func groupedLocalSkills(from filteredSkills: [Skill]) -> [LocalSkillGroup] {
@@ -205,16 +255,27 @@ import Observation
                 .compactMap({ platform in filteredSkills.first(where: { $0.platform == platform }) })
                 .first ?? filteredSkills.first ?? preferredSelection
 
+            // Collect platforms from all skills with the same slug
+            let installedPlatforms = Set(allSkillsForSlug.compactMap(\.platform))
+
             return LocalSkillGroup(
                 id: preferredSelection.id,
                 skill: preferredContent,
-                installedPlatforms: Set(allSkillsForSlug.map(\.platform)),
+                installedPlatforms: installedPlatforms,
                 deleteIDs: allSkillsForSlug.map(\.id)
             )
         }
         .sorted { lhs, rhs in
             lhs.skill.displayName.localizedCaseInsensitiveCompare(rhs.skill.displayName) == .orderedAscending
         }
+    }
+
+    func skillsForCustomPath(_ path: CustomSkillPath) -> [Skill] {
+        skills.filter { $0.customPath?.id == path.id }
+    }
+
+    func platformSkills() -> [Skill] {
+        skills.filter { $0.platform != nil }
     }
 
     func skillNeedsPublish(_ skill: Skill) async -> Bool {
