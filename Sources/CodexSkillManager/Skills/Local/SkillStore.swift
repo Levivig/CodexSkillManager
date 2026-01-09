@@ -268,6 +268,10 @@ import Observation
         }
     }
 
+    func groupedPlatformSkills(from skills: [Skill]) -> [LocalSkillGroup] {
+        groupedLocalSkills(from: skills.filter { $0.customPath == nil })
+    }
+
     func skillsForCustomPath(_ path: CustomSkillPath) -> [Skill] {
         skills.filter { $0.customPath?.id == path.id }
     }

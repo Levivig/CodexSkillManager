@@ -31,7 +31,7 @@ struct SkillListView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
 
-                localSectionContent(groupedLocalSkills)
+                localSectionContent()
             } else {
                 SidebarHeaderView(
                     skillCount: remoteLatestSkills.count,
@@ -131,9 +131,9 @@ struct SkillListView: View {
     }
 
     @ViewBuilder
-    private func localSectionContent(_ skills: [SkillStore.LocalSkillGroup]) -> some View {
-        // Filter to only user directory skills (exclude custom path skills)
-        let platformSkills = skills.filter { $0.skill.customPath == nil }
+    private func localSectionContent() -> some View {
+        // Group user directory skills separately to avoid custom-path slugs hiding them.
+        let platformSkills = store.groupedPlatformSkills(from: localSkills)
         let mine = platformSkills.filter { store.isOwnedSkill($0.skill) }
         let clawdhub = platformSkills.filter { !store.isOwnedSkill($0.skill) }
 

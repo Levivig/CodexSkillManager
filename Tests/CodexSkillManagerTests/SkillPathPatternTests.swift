@@ -341,3 +341,60 @@ struct SkillGroupingTests {
         #expect(userDirIDs.isDisjoint(with: customPathIDs))
     }
 }
+
+@Suite("Sidebar Platform Grouping")
+struct SidebarPlatformGroupingTests {
+    struct TestLocalSkillGroup {
+        let skill: TestSkill
+    }
+
+    private func groupedLocalSkills(from filteredSkills: [TestSkill]) -> [TestLocalSkillGroup] {
+        let grouped = Dictionary(grouping: filteredSkills, by: { $0.name })
+        let preferredPlatformOrder: [TestSkillPlatform] = [.codex, .claude, .opencode, .copilot]
+
+        return grouped.compactMap { _, filteredSkills in
+            guard let preferredSelection = preferredPlatformOrder
+                .compactMap({ platform in filteredSkills.first(where: { $0.platform == platform }) })
+                .first ?? filteredSkills.first else {
+                return nil
+            }
+
+            return TestLocalSkillGroup(skill: preferredSelection)
+        }
+        .sorted { lhs, rhs in
+            lhs.skill.name.localizedCaseInsensitiveCompare(rhs.skill.name) == .orderedAscending
+        }
+    }
+
+    @Test("Platform grouping keeps user-directory skills when custom paths share the slug")
+    func platformGroupingIgnoresCustomPathSelection() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let customPath = TestCustomSkillPath(url: URL(fileURLWithPath: "/Users/test/projects/my-project"))
+
+        let userDirSkill = TestSkill(
+            id: "claude-my-skill",
+            name: "my-skill",
+            platform: .claude,
+            customPath: nil,
+            folderURL: home.appendingPathComponent(".claude/skills/my-skill")
+        )
+        let customPathSkill = TestSkill(
+            id: "custom-codex-my-skill",
+            name: "my-skill",
+            platform: .codex,
+            customPath: customPath,
+            folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.codex/skills/public/my-skill")
+        )
+
+        let groupedAll = groupedLocalSkills(from: [userDirSkill, customPathSkill])
+        let oldPlatformGroups = groupedAll.filter { $0.skill.customPath == nil }
+
+        #expect(oldPlatformGroups.isEmpty)
+
+        let newPlatformGroups = groupedLocalSkills(from: [userDirSkill, customPathSkill].filter { $0.customPath == nil })
+
+        #expect(newPlatformGroups.count == 1)
+        #expect(newPlatformGroups.first?.skill.customPath == nil)
+        #expect(newPlatformGroups.first?.skill.platform == .claude)
+    }
+}
