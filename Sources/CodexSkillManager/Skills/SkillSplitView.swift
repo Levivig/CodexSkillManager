@@ -210,13 +210,24 @@ struct SkillSplitView: View {
 
     private func openSelectedSkillFolder(platform: SkillPlatform?) {
         guard source == .local else { return }
+        let fallbackURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codex/skills/public")
+        let selected = store.selectedSkill
         let url: URL
-        if let platform, let slug = store.selectedSkill?.name {
-            url = platform.rootURL.appendingPathComponent(slug)
+        if let platform, let slug = selected?.name {
+            if let selected, selected.platform == platform {
+                url = selected.folderURL
+            } else if let match = store.skills.first(where: {
+                $0.name == slug && $0.platform == platform && $0.customPath == selected?.customPath
+            }) {
+                url = match.folderURL
+            } else if let match = store.skills.first(where: { $0.name == slug && $0.platform == platform }) {
+                url = match.folderURL
+            } else {
+                url = platform.rootURL.appendingPathComponent(slug)
+            }
         } else {
-            url = store.selectedSkill?.folderURL
-                ?? FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent(".codex/skills/public")
+            url = selected?.folderURL ?? fallbackURL
         }
         NSWorkspace.shared.open(url)
     }
