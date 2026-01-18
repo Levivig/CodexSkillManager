@@ -219,7 +219,7 @@ struct SkillSplitView: View {
     private func openSelectedSkillFolder(platform: SkillPlatform?) {
         guard source == .local else { return }
         let fallbackURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".codex/skills/public")
+            .appendingPathComponent(".codex/skills")
         let selected = store.selectedSkill
         let url: URL
         if let platform, let slug = selected?.name {

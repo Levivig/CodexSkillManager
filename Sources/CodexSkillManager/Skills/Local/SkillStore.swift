@@ -82,8 +82,10 @@ import Observation
         detailState = .idle
         referenceState = .idle
         do {
-            let platforms = SkillPlatform.allCases.map { platform in
-                (platform, platform.rootURL, platform.storageKey)
+            let platforms = SkillPlatform.allCases.flatMap { platform in
+                zip(platform.relativePaths, platform.rootURLs).map { relativePath, rootURL in
+                    (platform, rootURL, platform.storageKey(forRelativePath: relativePath))
+                }
             }
             var skills: [Skill] = []
 
@@ -110,25 +112,26 @@ import Observation
             let fileManager = FileManager.default
             for customPath in customPathStore.customPaths {
                 for platform in SkillPlatform.allCases {
-                    let platformURL = platform.skillsURL(in: customPath.url)
-                    guard fileManager.fileExists(atPath: platformURL.path) else { continue }
+                    for (relativePath, platformURL) in zip(platform.relativePaths, platform.skillsURLs(in: customPath.url)) {
+                        guard fileManager.fileExists(atPath: platformURL.path) else { continue }
 
-                    let storageKey = "\(customPath.storageKey)-\(platform.storageKey)"
-                    let scanned = try await fileWorker.scanSkills(at: platformURL, storageKey: storageKey)
-                    skills.append(contentsOf: scanned.map { scannedSkill in
-                        Skill(
-                            id: scannedSkill.id,
-                            name: scannedSkill.name,
-                            displayName: scannedSkill.displayName,
-                            description: scannedSkill.description,
-                            platform: platform,
-                            customPath: customPath,
-                            folderURL: scannedSkill.folderURL,
-                            skillMarkdownURL: scannedSkill.skillMarkdownURL,
-                            references: scannedSkill.references,
-                            stats: scannedSkill.stats
-                        )
-                    })
+                        let storageKey = "\(customPath.storageKey)-\(platform.storageKey(forRelativePath: relativePath))"
+                        let scanned = try await fileWorker.scanSkills(at: platformURL, storageKey: storageKey)
+                        skills.append(contentsOf: scanned.map { scannedSkill in
+                            Skill(
+                                id: scannedSkill.id,
+                                name: scannedSkill.name,
+                                displayName: scannedSkill.displayName,
+                                description: scannedSkill.description,
+                                platform: platform,
+                                customPath: customPath,
+                                folderURL: scannedSkill.folderURL,
+                                skillMarkdownURL: scannedSkill.skillMarkdownURL,
+                                references: scannedSkill.references,
+                                stats: scannedSkill.stats
+                            )
+                        })
+                    }
                 }
             }
 

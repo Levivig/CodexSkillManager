@@ -5,7 +5,7 @@
 Codex Skill Manager is a macOS SwiftUI app built with SwiftPM (no Xcode project). It manages local skills for Codex and Claude Code, renders each `SKILL.md`, and lets you browse remote skills from Clawdhub.
 
 ## Features
-- Browse local skills from `~/.codex/skills/public` and `~/.claude/skills`
+- Browse local skills from `~/.codex/skills`, `~/.codex/skills/public`, and `~/.claude/skills`
 - Render `SKILL.md` with Markdown, plus inline reference previews
 - Import skills from a folder or zip
 - Delete skills from the sidebar

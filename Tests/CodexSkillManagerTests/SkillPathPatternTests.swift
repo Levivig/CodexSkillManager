@@ -20,11 +20,15 @@ enum TestSkillPlatform: String, CaseIterable {
     }
 
     var relativePath: String {
+        relativePaths.first ?? ".codex/skills"
+    }
+
+    var relativePaths: [String] {
         switch self {
-        case .codex: return ".codex/skills/public"
-        case .claude: return ".claude/skills"
-        case .opencode: return ".config/opencode/skill"
-        case .copilot: return ".copilot/skills"
+        case .codex: return [".codex/skills", ".codex/skills/public"]
+        case .claude: return [".claude/skills"]
+        case .opencode: return [".config/opencode/skill"]
+        case .copilot: return [".copilot/skills"]
         }
     }
 
@@ -35,6 +39,10 @@ enum TestSkillPlatform: String, CaseIterable {
 
     func skillsURL(in baseURL: URL) -> URL {
         baseURL.appendingPathComponent(relativePath)
+    }
+
+    func skillsURLs(in baseURL: URL) -> [URL] {
+        relativePaths.map { baseURL.appendingPathComponent($0) }
     }
 }
 
@@ -79,7 +87,8 @@ struct SkillPlatformPathTests {
 
     @Test("Platform relative paths are correct")
     func platformRelativePaths() {
-        #expect(TestSkillPlatform.codex.relativePath == ".codex/skills/public")
+        #expect(TestSkillPlatform.codex.relativePath == ".codex/skills")
+        #expect(TestSkillPlatform.codex.relativePaths == [".codex/skills", ".codex/skills/public"])
         #expect(TestSkillPlatform.claude.relativePath == ".claude/skills")
         #expect(TestSkillPlatform.opencode.relativePath == ".config/opencode/skill")
         #expect(TestSkillPlatform.copilot.relativePath == ".copilot/skills")
@@ -118,7 +127,14 @@ struct SkillPlatformPathTests {
         )
         #expect(
             TestSkillPlatform.codex.skillsURL(in: customBase).path ==
-            "/Users/test/projects/my-project/.codex/skills/public"
+            "/Users/test/projects/my-project/.codex/skills"
+        )
+        #expect(
+            TestSkillPlatform.codex.skillsURLs(in: customBase).map(\.path) ==
+            [
+                "/Users/test/projects/my-project/.codex/skills",
+                "/Users/test/projects/my-project/.codex/skills/public"
+            ]
         )
         #expect(
             TestSkillPlatform.opencode.skillsURL(in: customBase).path ==
@@ -320,13 +336,13 @@ struct SkillGroupingTests {
             TestSkill(id: "claude-skill1", name: "skill1", platform: .claude, customPath: nil,
                      folderURL: home.appendingPathComponent(".claude/skills/skill1")),
             TestSkill(id: "codex-skill2", name: "skill2", platform: .codex, customPath: nil,
-                     folderURL: home.appendingPathComponent(".codex/skills/public/skill2")),
+                     folderURL: home.appendingPathComponent(".codex/skills/skill2")),
 
             // Custom path skills
             TestSkill(id: "custom-abc-claude-skill3", name: "skill3", platform: .claude, customPath: customPath,
                      folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.claude/skills/skill3")),
             TestSkill(id: "custom-abc-codex-skill4", name: "skill4", platform: .codex, customPath: customPath,
-                     folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.codex/skills/public/skill4")),
+                     folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.codex/skills/skill4")),
         ]
 
         let userDirSkills = skills.filter { $0.isFromUserDirectory }
@@ -383,7 +399,7 @@ struct SidebarPlatformGroupingTests {
             name: "my-skill",
             platform: .codex,
             customPath: customPath,
-            folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.codex/skills/public/my-skill")
+            folderURL: URL(fileURLWithPath: "/Users/test/projects/my-project/.codex/skills/my-skill")
         )
 
         let groupedAll = groupedLocalSkills(from: [userDirSkill, customPathSkill])

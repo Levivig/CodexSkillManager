@@ -21,17 +21,31 @@ enum SkillPlatform: String, CaseIterable, Identifiable, Hashable, Sendable, Coda
         }
     }
 
-    /// Relative path from a base directory to the skills folder
+    func storageKey(forRelativePath relativePath: String) -> String {
+        guard relativePath != self.relativePath else { return storageKey }
+        let sanitized = relativePath
+            .replacingOccurrences(of: ".", with: "")
+            .replacingOccurrences(of: "/", with: "-")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return "\(storageKey)-\(sanitized)"
+    }
+
+    /// Primary relative path from a base directory to the skills folder.
     var relativePath: String {
+        relativePaths.first ?? ".codex/skills"
+    }
+
+    /// Relative paths from a base directory to the skills folder(s).
+    var relativePaths: [String] {
         switch self {
         case .codex:
-            return ".codex/skills/public"
+            return [".codex/skills", ".codex/skills/public"]
         case .claude:
-            return ".claude/skills"
+            return [".claude/skills"]
         case .opencode:
-            return ".config/opencode/skill"
+            return [".config/opencode/skill"]
         case .copilot:
-            return ".copilot/skills"
+            return [".copilot/skills"]
         }
     }
 
@@ -40,9 +54,19 @@ enum SkillPlatform: String, CaseIterable, Identifiable, Hashable, Sendable, Coda
         return home.appendingPathComponent(relativePath)
     }
 
+    var rootURLs: [URL] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return relativePaths.map { home.appendingPathComponent($0) }
+    }
+
     /// Returns the skills URL for this platform within a given base directory
     func skillsURL(in baseURL: URL) -> URL {
         baseURL.appendingPathComponent(relativePath)
+    }
+
+    /// Returns all skills URLs for this platform within a given base directory
+    func skillsURLs(in baseURL: URL) -> [URL] {
+        relativePaths.map { baseURL.appendingPathComponent($0) }
     }
 
     var description: String {

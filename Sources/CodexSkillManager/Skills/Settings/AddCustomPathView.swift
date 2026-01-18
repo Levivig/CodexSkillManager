@@ -49,7 +49,7 @@ struct AddCustomPathView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Add Custom Skill Path")
                 .font(.title.bold())
-            Text("Select a project folder. Skills will be auto-discovered from platform directories (e.g., .claude/skills, .codex/skills/public).")
+            Text("Select a project folder. Skills will be auto-discovered from platform directories (e.g., .claude/skills, .codex/skills, .codex/skills/public).")
                 .foregroundStyle(.secondary)
         }
     }
@@ -218,7 +218,7 @@ struct AddCustomPathView: View {
 
             discoveredSkills = discovered
             if discovered.isEmpty {
-                errorMessage = "No skills found. Make sure the folder contains platform directories like .claude/skills or .codex/skills/public with SKILL.md files."
+                errorMessage = "No skills found. Make sure the folder contains platform directories like .claude/skills or .codex/skills (including .codex/skills/public) with SKILL.md files."
             } else {
                 errorMessage = nil
             }
