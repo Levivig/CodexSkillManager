@@ -146,7 +146,7 @@ actor SkillFileWorker {
         var files: [URL] = []
         for case let fileURL as URL in enumerator {
             let path = fileURL.path
-            if path.contains("/.git/") || path.contains("/.clawdhub/") {
+            if path.contains("/.git/") || path.contains("/.clawdhub/") || path.contains("/.molthub/") {
                 continue
             }
             if fileURL.lastPathComponent == ".DS_Store" {
@@ -177,17 +177,27 @@ actor SkillFileWorker {
     }
 
     func readMolthubOrigin(from skillRoot: URL) -> MolthubOrigin? {
-        let originURL = skillRoot
-            .appendingPathComponent(".clawdhub", isDirectory: true)
-            .appendingPathComponent("origin.json")
-        guard let data = try? Data(contentsOf: originURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let slug = json["slug"] as? String else {
-            return nil
+        let originURLs = [
+            skillRoot
+                .appendingPathComponent(".molthub", isDirectory: true)
+                .appendingPathComponent("origin.json"),
+            skillRoot
+                .appendingPathComponent(".clawdhub", isDirectory: true)
+                .appendingPathComponent("origin.json")
+        ]
+
+        for originURL in originURLs {
+            guard let data = try? Data(contentsOf: originURL),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let slug = json["slug"] as? String else {
+                continue
+            }
+
+            let version = json["version"] as? String
+            return MolthubOrigin(slug: slug, version: version)
         }
 
-        let version = json["version"] as? String
-        return MolthubOrigin(slug: slug, version: version)
+        return nil
     }
 
     private func unzip(_ url: URL, to destination: URL) throws {
@@ -232,7 +242,7 @@ actor SkillFileWorker {
 
     private func writeMolthubOrigin(at skillRoot: URL, slug: String, version: String?) throws {
         let originDir = skillRoot
-            .appendingPathComponent(".clawdhub", isDirectory: true)
+            .appendingPathComponent(".molthub", isDirectory: true)
         try FileManager.default.createDirectory(at: originDir, withIntermediateDirectories: true)
 
         let originURL = originDir.appendingPathComponent("origin.json")

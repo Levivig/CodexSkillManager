@@ -219,10 +219,13 @@ import Observation
         if skill.customPath != nil {
             return true
         }
-        let originURL = skill.folderURL
+        let calwdhubOriginURL = skill.folderURL
             .appendingPathComponent(".clawdhub")
             .appendingPathComponent("origin.json")
-        return !FileManager.default.fileExists(atPath: originURL.path)
+        let originURL = skill.folderURL
+            .appendingPathComponent(".molthub")
+            .appendingPathComponent("origin.json")
+        return !FileManager.default.fileExists(atPath: calwdhubOriginURL.path()) && !FileManager.default.fileExists(atPath: originURL.path)
     }
 
     func molthubOrigin(for skill: Skill) async -> SkillFileWorker.MolthubOrigin? {
