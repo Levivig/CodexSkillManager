@@ -18,7 +18,7 @@ actor SkillFileWorker {
         let stats: SkillStats
     }
 
-    struct ClawdhubOrigin: Sendable {
+    struct MolthubOrigin: Sendable {
         let slug: String
         let version: String?
     }
@@ -77,7 +77,7 @@ actor SkillFileWorker {
                 try fileManager.removeItem(at: finalURL)
             }
             try fileManager.copyItem(at: skillRoot, to: finalURL)
-            try writeClawdhubOrigin(at: finalURL, slug: slug, version: version)
+            try writeMolthubOrigin(at: finalURL, slug: slug, version: version)
         }
 
         guard let preferred = destinations.first else { return nil }
@@ -176,7 +176,7 @@ actor SkillFileWorker {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    func readClawdhubOrigin(from skillRoot: URL) -> ClawdhubOrigin? {
+    func readMolthubOrigin(from skillRoot: URL) -> MolthubOrigin? {
         let originURL = skillRoot
             .appendingPathComponent(".clawdhub", isDirectory: true)
             .appendingPathComponent("origin.json")
@@ -187,7 +187,7 @@ actor SkillFileWorker {
         }
 
         let version = json["version"] as? String
-        return ClawdhubOrigin(slug: slug, version: version)
+        return MolthubOrigin(slug: slug, version: version)
     }
 
     private func unzip(_ url: URL, to destination: URL) throws {
@@ -230,7 +230,7 @@ actor SkillFileWorker {
         return nil
     }
 
-    private func writeClawdhubOrigin(at skillRoot: URL, slug: String, version: String?) throws {
+    private func writeMolthubOrigin(at skillRoot: URL, slug: String, version: String?) throws {
         let originDir = skillRoot
             .appendingPathComponent(".clawdhub", isDirectory: true)
         try FileManager.default.createDirectory(at: originDir, withIntermediateDirectories: true)
@@ -239,7 +239,7 @@ actor SkillFileWorker {
         let payload: [String: Any] = [
             "slug": slug,
             "version": version ?? "latest",
-            "source": "clawdhub",
+            "source": "molthub",
             "installedAt": Int(Date().timeIntervalSince1970)
         ]
         let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted])
